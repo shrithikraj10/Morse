@@ -6,7 +6,15 @@ import time
 
 blinks = []
 sentence = ''
-words = {
+
+EYE_OPEN_RATIO = 3
+EYE_OPEN_TIME_DIFFERENCE = 2
+AVERAGE_BLINKING_RATIO = 4.9
+TIME_FOR_LONG_BLINK = 0.2
+TIME_FOR_SHORT_BLINK = 0.1
+
+# Morse Codes
+morse_codes = {
     ".-": "A",
     "-...": "B",
     "-.-.": "C",
@@ -32,8 +40,22 @@ words = {
     ".--": "W",
     "-..-": "X",
     "-.--": "Y",
-    "--..": "Z"
+    "--..": "Z",
+    "----": "Switch Mode"
 }
+
+# Predefined Words
+predefined_words = {
+    ".": "Yes",
+    "-": "No",
+    ".-": "Blank",                              # Blank
+    "-.": "Blank",                              # Blank
+    "--": "Medicine",
+    "..": "Water",
+    "----": "Switch Mode"
+}
+
+dictionary_to_use = predefined_words
 
 cap = cv2.VideoCapture(0)
 
@@ -71,21 +93,31 @@ def get_blinking_ratio(eye_points, facial_landmarks, frames):
 
 
 def words_window(outputs):
-    cv2.putText(sentence_window, "Hello", (0, 0), font, 7, 255, 2)
+    cv2.putText(sentence_window, "Hello", (20, 20), font, 7, (255, 255, 255), 2)
 
 
 # Checks if the code in the blinks array is present in the words dictionary and displays the words
 def check_words():
-    global sentence
+    global sentence, dictionary_to_use
     letter = ''
     for char in blinks:
         if char == '':
             print(letter)
-            if letter in words:
-                sentence = sentence + words[letter]
-                print(words[letter])
+            if letter == '----':
+                if dictionary_to_use == predefined_words:
+                    print("Switching to Morse")
+                    dictionary_to_use = morse_codes
+                    sentence = ''
+                else:
+                    print("Switching to predefined words")
+                    dictionary_to_use = predefined_words
+                    sentence = ''
             else:
-                print("No word exists for this code")
+                if letter in dictionary_to_use:
+                    sentence = sentence + dictionary_to_use[letter]
+                    print(dictionary_to_use[letter])
+                else:
+                    print("No word exists for this code")
             letter = ''
         if char != '':
             letter += char
@@ -135,7 +167,7 @@ def calculate_blinks(start, is_first, eye_open_time, is_first_open):
             avg_bw_br = (bw_left_blinking_ratio + bw_right_blinking_ratio) / 2
 
             # Checks if the eye is open. If open it notes the time it was open
-            if avg_bw_br < 3:
+            if avg_bw_br < EYE_OPEN_RATIO:
                 if is_first_open:
                     eye_open_time = time.time()
                     print("Eye open detected")
@@ -144,7 +176,7 @@ def calculate_blinks(start, is_first, eye_open_time, is_first_open):
             # Checks how long the eye is open. If open for long it puts a space in array
             if eye_open_time > 0:
                 end = time.time()
-                if end - eye_open_time > 2:
+                if end - eye_open_time > EYE_OPEN_TIME_DIFFERENCE:
                     print("Space appended")
                     blinks.append("")
                     cv2.putText(eyes, "Space", (50, 150), font, 7, (255, 0, 0), 2)
@@ -152,7 +184,7 @@ def calculate_blinks(start, is_first, eye_open_time, is_first_open):
                     calculate_blinks(start, is_first, 0, False)
 
             # Checks if a blink has occurred and notes the start time of the blink
-            if avg_bw_br > 4.9:
+            if avg_bw_br > AVERAGE_BLINKING_RATIO:
                 if is_first:
                     start = time.time()
                 cv2.putText(eyes, "Blinking", (50, 150), font, 7, (255, 255, 255), 2)
@@ -161,18 +193,18 @@ def calculate_blinks(start, is_first, eye_open_time, is_first_open):
 
             # Checks the time when eye is opened after blink and checks difference between the closing and opening time
             # of the eye to segment blinking into short or long blink
-            if avg_bw_br < 4.9:
+            if avg_bw_br < AVERAGE_BLINKING_RATIO:
                 end = time.time()
                 timer = end - start
 
-                if start > 0 and timer < 2:
+                if start > 0 and timer < EYE_OPEN_TIME_DIFFERENCE:
                     print(f"Timer {timer}")
-                    if timer > 0.2:
+                    if timer > TIME_FOR_LONG_BLINK:
                         print(f"Timer {timer} Long Blink")
                         cv2.putText(eyes, "Long Blink", (50, 200), font, 7, (255, 255, 255), 2)
                         blinks.append("-")
                         calculate_blinks(0, True, 0, True)
-                    elif timer < 0.10:
+                    elif timer < TIME_FOR_SHORT_BLINK:
                         print(f"Timer {timer} Short Blink")
                         cv2.putText(eyes, "Short Blink", (50, 250), font, 7, (255, 255, 255), 2)
                         blinks.append(".")
