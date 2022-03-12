@@ -3,15 +3,20 @@ import numpy as np
 import dlib
 from math import hypot
 import time
+import pyttsx3
 
 blinks = []
 sentence = ''
 
+BLINK_FRAME_COUNT = 3
+
+blink_frame = 0
+
 EYE_OPEN_RATIO = 3
 EYE_OPEN_TIME_DIFFERENCE = 2
 AVERAGE_BLINKING_RATIO = 4.9
-TIME_FOR_LONG_BLINK = 0.2
-TIME_FOR_SHORT_BLINK = 0.1
+TIME_FOR_LONG_BLINK = 0.3
+TIME_FOR_SHORT_BLINK = 0.2
 
 # Morse Codes
 morse_codes = {
@@ -111,6 +116,9 @@ def check_words():
                 else:
                     print("Switching to predefined words")
                     dictionary_to_use = predefined_words
+                    engine = pyttsx3.init()
+                    engine.say("Switching to predefined words")
+                    engine.runAndWait()
                     sentence = ''
             else:
                 if letter in dictionary_to_use:
@@ -123,12 +131,19 @@ def check_words():
             letter += char
     print(sentence)
     words_window(sentence)
+
+    # Here text is converted to speech, the code may not work for the first time since the welcome1.mp3 file has to be
+    # created
+    engine = pyttsx3.init()
+    engine.say(sentence)
+    engine.runAndWait()
     blinks.clear()
 
 
 def calculate_blinks(start, is_first, eye_open_time, is_first_open):
+    global blink_frame
     while True:
-        _, frame = cap.read()
+        did_grab_frame, frame = cap.read()
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -187,6 +202,9 @@ def calculate_blinks(start, is_first, eye_open_time, is_first_open):
             if avg_bw_br > AVERAGE_BLINKING_RATIO:
                 if is_first:
                     start = time.time()
+                if did_grab_frame:
+                    blink_frame += 1                                                    # Count Number of Frames
+                    print(f"Blink Frames: {blink_frame}")
                 cv2.putText(eyes, "Blinking", (50, 150), font, 7, (255, 255, 255), 2)
                 print(f"Avg Blink Ratio {avg_bw_br}")
                 calculate_blinks(start, False, 0, False)
@@ -199,15 +217,24 @@ def calculate_blinks(start, is_first, eye_open_time, is_first_open):
 
                 if start > 0 and timer < EYE_OPEN_TIME_DIFFERENCE:
                     print(f"Timer {timer}")
-                    if timer > TIME_FOR_LONG_BLINK:
+                    if timer > TIME_FOR_LONG_BLINK and blink_frame >= BLINK_FRAME_COUNT:
                         print(f"Timer {timer} Long Blink")
                         cv2.putText(eyes, "Long Blink", (50, 200), font, 7, (255, 255, 255), 2)
                         blinks.append("-")
+                        print("Setting blink_frame to 0")
+                        blink_frame = 0
                         calculate_blinks(0, True, 0, True)
-                    elif timer < TIME_FOR_SHORT_BLINK:
+
+                    elif timer < TIME_FOR_SHORT_BLINK and blink_frame < BLINK_FRAME_COUNT:
                         print(f"Timer {timer} Short Blink")
                         cv2.putText(eyes, "Short Blink", (50, 250), font, 7, (255, 255, 255), 2)
                         blinks.append(".")
+                        print("Setting blink_frame to 0")
+                        blink_frame = 0
+                        calculate_blinks(0, True, 0, True)
+                    else:
+                        print("Setting blink_frame to 0")
+                        blink_frame = 0
                         calculate_blinks(0, True, 0, True)
 
                 key = cv2.waitKey(10)
