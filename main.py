@@ -1,9 +1,11 @@
+import pandas
 from cv2 import cv2
 import numpy as np
 import dlib
 from math import hypot
 import time
 import pyttsx3
+import pandas as p
 
 blinks = []
 sentence = ''
@@ -19,46 +21,9 @@ TIME_FOR_LONG_BLINK = 0.3
 TIME_FOR_SHORT_BLINK = 0.2
 
 # Morse Codes
-morse_codes = {
-    ".-": "A",
-    "-...": "B",
-    "-.-.": "C",
-    "-..": "D",
-    ".": "E",
-    "..-.": "F",
-    "--.": "G",
-    "....": "H",
-    "..": "I",
-    ".---": "J",
-    "-.-": "K",
-    ".-..": "L",
-    "--": "M",
-    "-.": "N",
-    "---": "O",
-    ".--.": "P",
-    "--.-": "Q",
-    ".-.": "R",
-    "...": "S",
-    "-": "T",
-    "..-": "U",
-    "...-": "V",
-    ".--": "W",
-    "-..-": "X",
-    "-.--": "Y",
-    "--..": "Z",
-    "----": "Switch Mode"
-}
-
+morse_codes = pandas.read_csv(r"text.csv")
 # Predefined Words
-predefined_words = {
-    ".": "Yes",
-    "-": "No",
-    ".-": "Blank",                              # Blank
-    "-.": "Blank",                              # Blank
-    "--": "Medicine",
-    "..": "Water",
-    "----": "Switch Mode"
-}
+predefined_words = pandas.read_csv(r"predefined.csv")
 
 dictionary_to_use = predefined_words
 
